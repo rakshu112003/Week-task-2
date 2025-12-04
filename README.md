@@ -1,3 +1,24 @@
-# Week-task-2
+File Uploader – Task 2 (Internship Task 2)
 
-[Edit in StackBlitz next generation editor ⚡️](https://stackblitz.com/~/github.com/rakshu112003/Week-task-2)
+This project is a simple File Upload API built using Node.js, Express, Multer, and MongoDB GridFS.
+It allows users to:
+
+✔ Upload files
+✔ Retrieve/download files
+✔ Delete files
+✔ Store files using GridFS
+✔ Handle errors properly
+
+
+🔧 Tech Stack
+
+Node.js
+
+Express.js
+
+Multer
+
+MongoDB
+
+GridFS Stream
+
