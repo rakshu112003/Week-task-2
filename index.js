@@ -1,75 +1,61 @@
-import express from "express";
-import multer from "multer";
-import { MongoClient, GridFSBucket } from "mongodb";
-import { Readable } from "stream";
+const express = require("express");
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs");
 
 const app = express();
-const port = 3000;
+const PORT = 3000;
 
-// MongoDB connection
-const mongoURL = "your_mongodb_url_here";  // Replace later
-const client = new MongoClient(mongoURL);
+// Create uploads folder if not exists
+if (!fs.existsSync("./uploads")) {
+  fs.mkdirSync("./uploads");
+}
 
-let bucket;
+// Multer storage
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "uploads/");
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + "_" + file.originalname);
+  },
+});
 
-async function connectDB() {
-  await client.connect();
-    const db = client.db("fileDB");
-      bucket = new GridFSBucket(db, { bucketName: "uploads" });
-        console.log("MongoDB Connected");
-        }
-        connectDB();
+const upload = multer({ storage });
 
-        // Multer Setup
-        const storage = multer.memoryStorage();
-        const upload = multer({ storage });
+// Upload API
+app.post("/upload", upload.single("file"), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ message: "No file uploaded" });
+  }
+  res.json({
+    message: "File uploaded successfully",
+    file: req.file.filename,
+  });
+});
 
-        // Upload File
-        app.post("/upload", upload.single("file"), (req, res) => {
-          if (!req.file) return res.status(400).send("No file uploaded");
+// Get uploaded file
+app.get("/files/:name", (req, res) => {
+  const filePath = path.join(__dirname, "uploads", req.params.name);
 
-            const readableFile = new Readable();
-              readableFile.push(req.file.buffer);
-                readableFile.push(null);
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: "File not found" });
+  }
+  res.sendFile(filePath);
+});
 
-                  const uploadStream = bucket.openUploadStream(req.file.originalname);
+// Delete uploaded file
+app.delete("/files/:name", (req, res) => {
+  const filePath = path.join(__dirname, "uploads", req.params.name);
 
-                    readableFile.pipe(uploadStream);
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: "File not found" });
+  }
 
-                      uploadStream.on("finish", () => {
-                          res.json({
-                                message: "File uploaded successfully",
-                                      fileId: uploadStream.id
-                                          });
-                                            });
-                                            });
+  fs.unlinkSync(filePath);
+  res.json({ message: "File deleted" });
+});
 
-                                            // Get File by ID
-                                            app.get("/file/:id", (req, res) => {
-                                              const fileId = req.params.id;
-
-                                                const downloadStream = bucket.openDownloadStream(fileId);
-                                                  downloadStream.pipe(res);
-
-                                                    downloadStream.on("error", () => {
-                                                        res.status(404).send("File not found");
-                                                          });
-                                                          });
-
-                                                          // Delete File
-                                                          app.delete("/file/:id", async (req, res) => {
-                                                            const fileId = req.params.id;
-
-                                                              try {
-                                                                  await bucket.delete(fileId);
-                                                                      res.send("File deleted successfully");
-                                                                        } catch (error) {
-                                                                            res.status(500).send("Error deleting file");
-                                                                              }
-                                                                              });
-
-                                                                              app.listen(port, () => {
-                                                                                console.log(`Server running on port ${port}`);
-                                                                                });
-
-
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
